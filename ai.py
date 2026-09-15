@@ -390,11 +390,7 @@ if prompt:
 
         uploaded_file = uploaded_files[0]
 
-
-    # -----------------------------------------------------
-    # DISPLAY USER MESSAGE
-    # -----------------------------------------------------
-
+                                                  # DISPLAY USER MESSAGE
     with st.chat_message("user"):
 
         if question:
@@ -407,12 +403,8 @@ if prompt:
                 f"📎 {uploaded_file.name}"
             )
 
-
-    # -----------------------------------------------------
-    # GENERATE ANSWER
-    # -----------------------------------------------------
-
-    with st.chat_message("assistant"):
+                                                 # GENERATE ANSWER
+     with st.chat_message("assistant"):
 
         with st.spinner("🤖 Reading and analyzing..."):
 
@@ -423,11 +415,7 @@ if prompt:
 
         st.markdown(answer)
 
-
-    # -----------------------------------------------------
-    # QUESTION FOR DATABASE
-    # -----------------------------------------------------
-
+                                                 # QUESTION FOR DATABASE
     display_question = question
 
 
@@ -442,22 +430,14 @@ if prompt:
 
         display_question = "Uploaded file"
 
-
-    # -----------------------------------------------------
-    # SAVE TO SQLITE
-    # -----------------------------------------------------
-
+                                                   # SAVE TO SQLITE
     chat_date, chat_time = save_chat(
         display_question,
-        answer
+         answer
     )
-
-
-    # -----------------------------------------------------
-    # SAVE TO SESSION STATE
-    # -----------------------------------------------------
-
-    st.session_state.chat_history.append(
+    
+                                                    # SAVE TO SESSION STATE
+     st.session_state.chat_history.append(
         {
             "question": display_question,
             "answer": answer,
