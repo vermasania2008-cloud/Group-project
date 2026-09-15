@@ -93,20 +93,13 @@ history_tab, deleted_tab = st.tabs(
     ]
 )
 
-
-# =========================================================
-# CHAT HISTORY TAB
-# =========================================================
-
+                                            # CHAT HISTORY TAB
 with history_tab:
 
     st.markdown("### 📜 Your Conversations")
 
-    # -----------------------------------------------------
-    # SEARCH
-    # -----------------------------------------------------
-
-    search = st.text_input(
+                                             # SEARCH
+   search = st.text_input(
         "🔍 Search your conversations",
         placeholder="Search by question...",
         key="history_search"
