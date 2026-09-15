@@ -112,11 +112,7 @@ with history_tab:
         key="history_search"
     )
 
-
-    # -----------------------------------------------------
-    # GET ACTIVE CONVERSATIONS
-    # -----------------------------------------------------
-
+                                              # GET ACTIVE CONVERSATIONS
     if search:
 
         cursor.execute(
@@ -144,12 +140,8 @@ with history_tab:
 
     chats = cursor.fetchall()
 
-
-    # -----------------------------------------------------
-    # CONVERSATION COUNT
-    # -----------------------------------------------------
-
-    if chats:
+                                               # CONVERSATION COUNT
+   if chats:
 
         st.success(
             f"📚 {len(chats)} conversation(s) found."
@@ -161,12 +153,8 @@ with history_tab:
             "📭 No conversations found."
         )
 
-
-    # -----------------------------------------------------
-    # DISPLAY ACTIVE CONVERSATIONS
-    # -----------------------------------------------------
-
-    for chat in chats:
+                                                # DISPLAY ACTIVE CONVERSATIONS
+     for chat in chats:
 
         chat_id = chat[0]
         question = chat[1]
@@ -174,11 +162,7 @@ with history_tab:
         date = chat[3]
         time = chat[4]
 
-
-        # -------------------------------------------------
-        # SHORT TITLE
-        # -------------------------------------------------
-
+                                                # SHORT TITLE
         if len(question) > 70:
 
             title = question[:70] + "..."
@@ -187,18 +171,10 @@ with history_tab:
 
             title = question
 
+                                                 # CHAT HEADER
+       col1, col2 = st.columns([6, 1])
 
-        # -------------------------------------------------
-        # CHAT HEADER
-        # -------------------------------------------------
-
-        col1, col2 = st.columns([6, 1])
-
-
-        # -------------------------------------------------
-        # OPEN / CLOSE CHAT
-        # -------------------------------------------------
-
+                                                 # OPEN / CLOSE CHAT
         with col1:
 
             if st.button(
@@ -215,12 +191,8 @@ with history_tab:
 
                     st.session_state.open_chat = chat_id
 
-
-        # -------------------------------------------------
-        # MOVE TO DELETED HISTORY
-        # -------------------------------------------------
-
-        with col2:
+                                                 # MOVE TO DELETED HISTORY
+         with col2:
 
             if st.button(
                 "🗑️",
@@ -249,12 +221,8 @@ with history_tab:
 
                 st.rerun()
 
-
-        # -------------------------------------------------
-        # SHOW CONVERSATION
-        # -------------------------------------------------
-
-        if st.session_state.open_chat == chat_id:
+                                               # SHOW CONVERSATION
+       if st.session_state.open_chat == chat_id:
 
             with st.container(border=True):
 
@@ -274,11 +242,7 @@ with history_tab:
 
                 st.markdown(answer)
 
-
-    # =====================================================
-    # DELETE ALL ACTIVE HISTORY
-    # =====================================================
-
+                                               # DELETE ALL ACTIVE HISTORY
     if chats:
 
         st.markdown("---")
@@ -294,11 +258,7 @@ with history_tab:
 
             st.session_state.confirm_delete_all = True
 
-
-        # -------------------------------------------------
-        # CONFIRM DELETE ALL
-        # -------------------------------------------------
-
+                                                  # CONFIRM DELETE ALL
         if st.session_state.confirm_delete_all:
 
             st.warning(
@@ -343,11 +303,7 @@ with history_tab:
 
                     st.rerun()
 
-
-# =========================================================
-# DELETED HISTORY TAB
-# =========================================================
-
+                                                    # DELETED HISTORY TAB
 with deleted_tab:
 
     st.markdown("### 🗑️ Deleted History")
@@ -356,11 +312,7 @@ with deleted_tab:
         "Deleted conversations are kept here until you permanently remove them."
     )
 
-
-    # -----------------------------------------------------
-    # GET DELETED CONVERSATIONS
-    # -----------------------------------------------------
-
+                                                    # GET DELETED CONVERSATIONS
     cursor.execute(
         """
         SELECT id, question, answer, date, time
@@ -372,11 +324,7 @@ with deleted_tab:
 
     deleted_chats = cursor.fetchall()
 
-
-    # -----------------------------------------------------
-    # DELETED COUNT
-    # -----------------------------------------------------
-
+                                                      # DELETED COUNT
     if deleted_chats:
 
         st.warning(
@@ -389,11 +337,7 @@ with deleted_tab:
             "🗑️ No deleted conversations."
         )
 
-
-    # -----------------------------------------------------
-    # DISPLAY DELETED CONVERSATIONS
-    # -----------------------------------------------------
-
+                                                      # DISPLAY DELETED CONVERSATIONS
     for chat in deleted_chats:
 
         chat_id = chat[0]
@@ -402,11 +346,7 @@ with deleted_tab:
         date = chat[3]
         time = chat[4]
 
-
-        # -------------------------------------------------
-        # SHORT TITLE
-        # -------------------------------------------------
-
+                                                      # SHORT TITLE
         if len(question) > 70:
 
             title = question[:70] + "..."
@@ -415,18 +355,10 @@ with deleted_tab:
 
             title = question
 
+                                                       # DELETED CHAT HEADER
+       col1, col2, col3 = st.columns([5, 1, 1])
 
-        # -------------------------------------------------
-        # DELETED CHAT HEADER
-        # -------------------------------------------------
-
-        col1, col2, col3 = st.columns([5, 1, 1])
-
-
-        # =================================================
-        # OPEN DELETED CHAT
-        # =================================================
-
+                                                       # OPEN DELETED CHAT
         with col1:
 
             if st.button(
@@ -443,12 +375,8 @@ with deleted_tab:
 
                     st.session_state.open_chat = chat_id
 
-
-        # =================================================
-        # RESTORE CHAT
-        # =================================================
-
-        with col2:
+                                                         # RESTORE CHAT
+         with col2:
 
             if st.button(
                 "♻️",
@@ -471,12 +399,8 @@ with deleted_tab:
 
                 st.rerun()
 
-
-        # =================================================
-        # PERMANENT DELETE
-        # =================================================
-
-        with col3:
+                                                   # PERMANENT DELETE
+         with col3:
 
             if st.button(
                 "❌",
@@ -498,12 +422,8 @@ with deleted_tab:
 
                 st.rerun()
 
-
-        # =================================================
-        # SHOW DELETED CHAT
-        # =================================================
-
-        if st.session_state.open_chat == chat_id:
+                                                     # SHOW DELETED CHAT
+         if st.session_state.open_chat == chat_id:
             with st.container(border=True):
                 st.caption(
                     f"📅 {date}   |   🕒 {time}"
