@@ -67,11 +67,7 @@ if "deleted" not in columns:
 
     conn.commit()
 
-
-# =========================================================
-# SESSION STATE
-# =========================================================
-
+                                          # SESSION STATE
 if "open_chat" not in st.session_state:
     st.session_state.open_chat = None
 
@@ -81,11 +77,7 @@ if "confirm_delete_all" not in st.session_state:
 if "confirm_empty_trash" not in st.session_state:
     st.session_state.confirm_empty_trash = False
 
-
-# =========================================================
-# TABS
-# =========================================================
-
+                                           # TABS
 history_tab, deleted_tab = st.tabs(
     [
         "📜 Chat History",
