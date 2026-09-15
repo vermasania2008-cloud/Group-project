@@ -6,29 +6,16 @@ from google import genai
 import os
 from dotenv import load_dotenv
 
-
-# =========================================================
-# LOAD ENVIRONMENT VARIABLES
-# =========================================================
-
+                               # LOAD ENVIRONMENT VARIABLES
 load_dotenv()
 
-
-# =========================================================
-# PAGE CONFIGURATION
-# =========================================================
-
+                               # PAGE CONFIGURATION
 st.set_page_config(
     page_title="AI Assistant",
     page_icon="🤖",
     layout="wide"
 )
-
-
-# =========================================================
-# DATABASE
-# =========================================================
-
+                                # DATABASE
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(BASE_DIR, "chat_history.db")
 
@@ -39,11 +26,7 @@ conn = sqlite3.connect(
 
 cursor = conn.cursor()
 
-
-# =========================================================
-# CREATE CHAT TABLE
-# =========================================================
-
+                                 # CREATE CHAT TABLE
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS chats (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -56,19 +39,11 @@ CREATE TABLE IF NOT EXISTS chats (
 
 conn.commit()
 
-
-# =========================================================
-# SESSION STATE
-# =========================================================
-
+                                  # SESSION STATE
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
-
-
-# =========================================================
-# GEMINI API
-# =========================================================
-
+                                
+                                  # GEMINI API
 API_KEY = os.getenv("GEMINI_API_KEY")
 
 if not API_KEY:
@@ -85,23 +60,13 @@ if not API_KEY:
 client = genai.Client(
     api_key=API_KEY
 )
-
-
-# =========================================================
-# PAGE TITLE
-# =========================================================
-
+                                   # PAGE TITLE
 st.title("✨ AI Assistant")
 
 st.caption(
     "Ask anything. Upload a file when you want answers based on your document."
 )
-
-
-# =========================================================
-# GEMINI SYSTEM INSTRUCTION
-# =========================================================
-
+                                   # GEMINI SYSTEM INSTRUCTION
 SYSTEM_INSTRUCTION = """
 You are an academic AI assistant for college students.
 
