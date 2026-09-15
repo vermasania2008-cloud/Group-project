@@ -148,26 +148,16 @@ GENERAL RULES:
 - If you are uncertain, say so instead of making up information.
 - Do not give unnecessarily complicated answers.
 """
-
-
-# =========================================================
-# GENERATE GEMINI RESPONSE
-# =========================================================
-
+                                           # GENERATE GEMINI RESPONSE
 def generate_answer(question, uploaded_file=None):
 
     try:
 
         contents = []
-
-
-        # -------------------------------------------------
-        # FILE HANDLING
-        # -------------------------------------------------
-
+                                           # FILE HANDLING
         if uploaded_file is not None:
 
-            # Save uploaded file temporarily
+                                           # Save uploaded file temporarily
             temp_file_path = os.path.join(
                 BASE_DIR,
                 f"temp_{uploaded_file.name}"
@@ -185,13 +175,9 @@ def generate_answer(question, uploaded_file=None):
 
             # Add file to Gemini request
             contents.append(gemini_file)
-
-
-        # -------------------------------------------------
-        # BUILD USER PROMPT
-        # -------------------------------------------------
-
-        if question:
+                                       
+                              # BUILD USER PROMPT
+            if question:
 
             if uploaded_file:
 
@@ -231,12 +217,7 @@ should understand.
 
 
         contents.append(user_prompt)
-
-
-        # -------------------------------------------------
-        # GENERATE RESPONSE
-        # -------------------------------------------------
-
+                            # GENERATE RESPONSE
         response = client.models.generate_content(
 
             model="gemini-3.6-flash",
@@ -247,12 +228,7 @@ should understand.
                 "system_instruction": SYSTEM_INSTRUCTION
             }
         )
-
-
-        # -------------------------------------------------
-        # DELETE TEMPORARY FILE
-        # -------------------------------------------------
-
+                            # DELETE TEMPORARY FILE
         try:
 
             if os.path.exists(temp_file_path):
@@ -260,13 +236,8 @@ should understand.
 
         except Exception:
             pass
-
-
-        # -------------------------------------------------
-        # RETURN ANSWER
-        # -------------------------------------------------
-
-        if response.text:
+                             # RETURN ANSWER
+         if response.text:
 
             return response.text
 
@@ -283,12 +254,7 @@ Unable to generate an answer.
 **Error:**
 `{str(e)}`
 """
-
-
-# =========================================================
-# SAVE CHAT TO SQLITE
-# =========================================================
-
+                              # SAVE CHAT TO SQLITE
 def save_chat(question, answer):
 
     now = datetime.now()
@@ -314,12 +280,7 @@ def save_chat(question, answer):
     conn.commit()
 
     return chat_date, chat_time
-
-
-# =========================================================
-# DISPLAY CURRENT SESSION CHAT HISTORY
-# =========================================================
-
+                              # DISPLAY CURRENT SESSION CHAT HISTORY
 for chat in st.session_state.chat_history:
 
     with st.chat_message("user"):
@@ -338,12 +299,7 @@ for chat in st.session_state.chat_history:
         st.markdown(
             chat["answer"]
         )
-
-
-# =========================================================
-# CHAT INPUT
-# =========================================================
-
+                                # CHAT INPUT
 prompt = st.chat_input(
 
     "Ask me anything or upload a file...",
@@ -362,25 +318,11 @@ prompt = st.chat_input(
 
     max_upload_size=200
 )
-
-
-# =========================================================
-# PROCESS USER INPUT
-# =========================================================
-
+                                  # PROCESS USER INPUT
 if prompt:
-
-    # -----------------------------------------------------
-    # GET QUESTION
-    # -----------------------------------------------------
-
-    question = prompt.text.strip()
-
-
-    # -----------------------------------------------------
-    # GET FILES
-    # -----------------------------------------------------
-
+                                  # GET QUESTION
+     question = prompt.text.strip()
+                                  # GET FILES
     uploaded_files = prompt.files
 
 
@@ -390,7 +332,7 @@ if prompt:
 
         uploaded_file = uploaded_files[0]
 
-                                                  # DISPLAY USER MESSAGE
+                                 # DISPLAY USER MESSAGE
     with st.chat_message("user"):
 
         if question:
@@ -403,7 +345,7 @@ if prompt:
                 f"📎 {uploaded_file.name}"
             )
 
-                                                 # GENERATE ANSWER
+                                    # GENERATE ANSWER
      with st.chat_message("assistant"):
 
         with st.spinner("🤖 Reading and analyzing..."):
@@ -415,7 +357,7 @@ if prompt:
 
         st.markdown(answer)
 
-                                                 # QUESTION FOR DATABASE
+                                  # QUESTION FOR DATABASE
     display_question = question
 
 
@@ -430,13 +372,13 @@ if prompt:
 
         display_question = "Uploaded file"
 
-                                                   # SAVE TO SQLITE
+                                    # SAVE TO SQLITE
     chat_date, chat_time = save_chat(
         display_question,
          answer
     )
     
-                                                    # SAVE TO SESSION STATE
+                                     # SAVE TO SESSION STATE
      st.session_state.chat_history.append(
         {
             "question": display_question,
