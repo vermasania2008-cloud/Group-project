@@ -504,96 +504,58 @@ with deleted_tab:
         # =================================================
 
         if st.session_state.open_chat == chat_id:
-
             with st.container(border=True):
-
                 st.caption(
                     f"📅 {date}   |   🕒 {time}"
                 )
-
                 st.markdown(
                     "### 👤 Your Question"
                 )
-
                 st.write(question)
-
                 st.markdown(
                     "### 🤖 AI Answer"
                 )
-
                 st.markdown(answer)
-
-
-    # =====================================================
-    # EMPTY TRASH
-    # =====================================================
-
+                                                      # EMPTY TRASH
     if deleted_chats:
-
         st.markdown("---")
-
         st.markdown(
             "### 🧹 Empty Deleted History"
         )
-
         if st.button(
             "🧹 Permanently Delete All Deleted Conversations",
             type="secondary"
         ):
-
             st.session_state.confirm_empty_trash = True
-
-
-        # -------------------------------------------------
-        # CONFIRM EMPTY TRASH
-        # -------------------------------------------------
-
-        if st.session_state.confirm_empty_trash:
-
+                                                
+                                                    # CONFIRM EMPTY TRASH
+         if st.session_state.confirm_empty_trash:
             st.error(
                 "⚠️ This will permanently delete all conversations "
                 "from Deleted History. This action cannot be undone."
             )
-
             col1, col2 = st.columns(2)
-
-
             with col1:
-
                 if st.button(
                     "❌ Yes, Delete Permanently",
                     use_container_width=True
                 ):
-
                     cursor.execute(
                         """
                         DELETE FROM chats
                         WHERE deleted = 1
                         """
                     )
-
                     conn.commit()
-
                     st.session_state.open_chat = None
                     st.session_state.confirm_empty_trash = False
-
                     st.rerun()
-
-
             with col2:
-
                 if st.button(
                     "↩️ Cancel",
                     use_container_width=True
                 ):
-
                     st.session_state.confirm_empty_trash = False
-
                     st.rerun()
-
-
-# =========================================================
-# CLOSE DATABASE
-# =========================================================
-
+                                               # CLOSE DATABASE
 conn.close()
