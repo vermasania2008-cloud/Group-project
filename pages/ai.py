@@ -1,5 +1,5 @@
 
-import streamlit as st
+import streamlit as st    
 import sqlite3
 from datetime import datetime
 from google import genai
@@ -46,7 +46,7 @@ load_env_file(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"))
                                 # DATABASE
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(BASE_DIR, "chat_history.db")
-
+       
 conn = sqlite3.connect(
     DB_PATH,
     check_same_thread=False
