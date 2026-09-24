@@ -2,11 +2,18 @@ from pathlib import Path
 
 import streamlit as st
 
+from auth import auth_gate, render_logout_button, render_page_link
+
 st.set_page_config(
-    page_title="EduSearch AI",
+    page_title="Edusearch AI",
     page_icon=":material/dashboard:",
     layout="wide",
     initial_sidebar_state="expanded",
+)
+
+st.markdown(
+    '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,400,0,0" />',
+    unsafe_allow_html=True,
 )
 
 css_path = Path(__file__).parent / "style.css"
@@ -17,6 +24,8 @@ if css_path.exists():
     )
 else:
     st.error(f"CSS file not found: {css_path}")
+
+auth_gate()
 
 with st.sidebar:
     st.markdown(
@@ -30,13 +39,20 @@ with st.sidebar:
         unsafe_allow_html=True,
     )
 
-    st.page_link("dash.py", label="Dashboard", icon=":material/dashboard:")
-    st.page_link("pages/que.py", label="Question Paper Analyzer", icon=":material/document_scanner:")
-    st.page_link("pages/ai.py", label="AI Assistant", icon=":material/psychology:")
+    render_page_link("dash.py", label="Dashboard", icon=":material/dashboard:")
+    render_page_link("pages/que.py", label="Question Paper Analyzer", icon=":material/document_scanner:")
+    render_page_link("pages/ai.py", label="AI Assistant", icon=":material/psychology:")
+    render_page_link("pages/timetable.py", label="Timetable Maker", icon=":material/calendar_month:")
+    render_page_link("pages/tda.py", label="Today Achievement", icon=":material/workspace_premium:")
+    render_page_link("pages/timer.py", label="Study Timer", icon=":material/timer:")
+    render_page_link("pages/his.py", label="History", icon=":material/history:")
+    render_logout_button()
 
-    papers_analyzed = st.session_state.get("papers_analyzed", 0)
-    questions_analyzed = st.session_state.get("questions_analyzed", 0)
-    topics_detected = st.session_state.get("topics_detected", 0)
+papers_analyzed = st.session_state.get("papers_analyzed", 0)
+questions_analyzed = st.session_state.get("questions_analyzed", 0)
+topics_detected = st.session_state.get("topics_detected", 0)
+
+user_name = st.session_state.get("auth_user", {}).get("username", "Student")
 
 st.markdown(
     """
@@ -58,7 +74,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 st.markdown(
-    '<div class="section-heading"><span class="material-symbols-outlined">waving_hand</span><span>Welcome back</span></div>',
+    f'<div class="section-heading"><span class="material-symbols-outlined">waving_hand</span><span>Welcome back, {user_name}</span></div>',
     unsafe_allow_html=True,
 )
 
@@ -78,9 +94,30 @@ st.markdown(
 )
 col5, col6, col7 = st.columns(3)
 with col5:
-    st.metric("Today's Achievement", f"{questions_analyzed} questions")
+    if st.button(
+        "Today's Achievement",
+        key="quick_achievement",
+        icon=":material/workspace_premium:",
+        width="stretch",
+    ):
+        st.switch_page("pages/tda.py")
+    st.caption(f"{questions_analyzed} questions tracked")
 with col6:
-    st.metric("AI Assistant", "Available")
+    if st.button(
+        "AI Assistant",
+        key="quick_assistant",
+        icon=":material/psychology:",
+        width="stretch",
+    ):
+        st.switch_page("pages/ai.py")
+    st.caption("Ask, explore, and study")
 with col7:
-    st.metric("History", f"{papers_analyzed} papers")
+    if st.button(
+        "History",
+        key="quick_history",
+        icon=":material/history:",
+        width="stretch",
+    ):
+        st.switch_page("pages/his.py")
+    st.caption(f"{papers_analyzed} papers analyzed")
 
