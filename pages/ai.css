@@ -35,7 +35,7 @@
     -webkit-font-smoothing: antialiased;
     font-feature-settings: "liga";
     font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 48;
-}
+}    
     
 :root {
     --teal-950: #006033;
