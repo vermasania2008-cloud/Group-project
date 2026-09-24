@@ -4,10 +4,7 @@ from datetime import date, datetime
 
 import streamlit as st
 
-
-# ============================================================
-# CONFIGURATION
-# ============================================================
+                                 # CONFIGURATION
 
 DB_NAME = "chat_history.db"
 DEFAULT_FOCUS_MINUTES = 25
@@ -103,11 +100,7 @@ def get_today_focus_minutes():
 
     return int(row["total"] if row else 0)
 
-
-# ============================================================
-# SESSION STATE
-# ============================================================
-
+                                                   # SESSION STATE
 def initialize_timer():
     defaults = {
         "timer_running": False,
