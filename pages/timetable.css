@@ -1,0 +1,334 @@
+@import url("https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,400,0,0");
+
+:root {
+    --teal-950: #006033;
+    --teal-900: #0f5c41;
+    --teal-700: #067a4c;
+    --teal-500: #25d18b;
+    --teal-100: #dafaf0;
+    --page-bg: #f4fbf8;
+    --text: #0a221c;
+    --muted: #5b7d75;
+    --border: rgba(6, 122, 76, 0.14);
+    --shadow: 0 12px 28px rgba(10, 76, 65, 0.08);
+}
+
+.material-symbols-outlined {
+    font-family: "Material Symbols Outlined";
+    font-weight: normal;
+    font-style: normal;
+    font-size: 22px;
+    line-height: 1;
+    letter-spacing: normal;
+    text-transform: none;
+    display: inline-block;
+    white-space: nowrap;
+    word-wrap: normal;
+    direction: ltr;
+    -webkit-font-feature-settings: "liga";
+    -webkit-font-smoothing: antialiased;
+    font-feature-settings: "liga";
+    font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 48;
+}
+
+html,
+body {
+    background: var(--page-bg);
+}
+
+.stApp {
+    color: var(--text);
+    background:
+        radial-gradient(circle at top right, rgba(96, 219, 177, 0.18), transparent 30%),
+        linear-gradient(180deg, #f7fcfa 0%, #edf9f5 100%) !important;
+}
+
+[data-testid="stAppViewContainer"] {
+    background: transparent;
+}
+
+.block-container {
+    max-width: 1200px;
+    padding: 1.8rem 1.2rem 2.5rem;
+}
+
+h1 {
+    color: var(--teal-950) !important;
+    font-size: clamp(2.2rem, 4vw, 3.2rem) !important;
+    font-weight: 800 !important;
+    letter-spacing: -0.06em;
+    margin: 0 !important;
+}
+
+h2,
+h3 {
+    color: var(--text) !important;
+    font-weight: 800 !important;
+    letter-spacing: -0.035em;
+}
+
+p {
+    color: var(--muted);
+    line-height: 1.6;
+}
+
+section[data-testid="stSidebar"] {
+    background: linear-gradient(180deg, rgba(225, 250, 240, 0.97), rgba(246, 251, 249, 0.98)) !important;
+    border-right: 1px solid var(--border);
+    box-shadow: 8px 0 24px rgba(10, 76, 65, 0.05);
+}
+
+section[data-testid="stSidebar"] > div {
+    padding: 1.2rem 1rem 1.5rem;
+}
+
+section[data-testid="stSidebar"] * {
+    color: var(--teal-950) !important;
+}
+
+.brand {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    margin-top: 0.4rem;
+}
+
+.brand-icon {
+    color: var(--teal-700) !important;
+    font-size: 30px;
+    background: rgba(218, 250, 240, 0.9);
+    border-radius: 12px;
+    padding: 8px;
+}
+
+.sidebar-title {
+    color: var(--teal-950) !important;
+    font-size: 1.7rem;
+    font-weight: 800;
+    letter-spacing: -0.05em;
+    line-height: 1.2;
+}
+
+.sidebar-subtitle {
+    color: #5c7e73 !important;
+    font-size: 0.78rem;
+    text-align: center;
+    margin: 0.35rem 0 0.2rem;
+}
+
+section[data-testid="stSidebar"] a {
+    display: flex !important;
+    align-items: center;
+    gap: 0.7rem;
+    width: 100%;
+    padding: 0.75rem 0.8rem;
+    border-radius: 12px;
+    margin: 0.2rem 0;
+    transition: all 0.2s ease;
+}
+
+section[data-testid="stSidebar"] a:hover {
+    background: rgba(218, 250, 240, 0.8);
+    transform: translateX(4px);
+}
+
+section[data-testid="stSidebar"] a[aria-current="page"] {
+    background: linear-gradient(135deg, rgba(218, 250, 240, 0.9), rgba(196, 242, 223, 0.82));
+    border: 1px solid var(--border);
+    box-shadow: 0 8px 18px rgba(10, 76, 65, 0.06);
+}
+
+.ai-header-card {
+    position: relative;
+    margin: 0 0 1.4rem;
+    padding: 1.1rem 1.2rem 1.25rem;
+    border: 1px solid var(--border);
+    border-radius: 22px;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.82), rgba(226, 249, 238, 0.92));
+    box-shadow: 0 16px 30px rgba(10, 76, 65, 0.08);
+    overflow: hidden;
+}
+
+.ai-header-card::after {
+    content: "";
+    position: absolute;
+    right: -30px;
+    top: -35px;
+    width: 180px;
+    height: 180px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(37, 209, 139, 0.18), transparent 62%);
+}
+
+.ai-header-badge,
+.ai-status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    border: 1px solid var(--border);
+    color: var(--teal-900);
+    font-weight: 800;
+}
+
+.ai-header-badge {
+    padding: 0.42rem 0.7rem;
+    border-radius: 999px;
+    background: rgba(218, 250, 240, 0.82);
+    font-size: 0.72rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.ai-header-badge .material-symbols-outlined,
+.ai-status-pill .material-symbols-outlined {
+    font-size: 16px;
+}
+
+.ai-header-row {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    margin-top: 0.7rem;
+}
+
+.ai-title-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 46px;
+    height: 46px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, var(--teal-700), var(--teal-900));
+    color: white !important;
+    box-shadow: 0 10px 20px rgba(6, 122, 76, 0.22);
+}
+
+.ai-subtitle {
+    margin: 0.55rem 0 0;
+    color: var(--muted) !important;
+    font-size: 1rem;
+}
+
+.ai-status-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.55rem;
+    margin-top: 1rem;
+}
+
+.ai-status-pill {
+    padding: 0.42rem 0.72rem;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.7);
+    font-size: 0.72rem;
+}
+
+.stButton > button {
+    width: 100%;
+    min-height: 2.7rem;
+    border: 1px solid rgba(6, 122, 76, 0.2) !important;
+    border-radius: 12px !important;
+    background: linear-gradient(135deg, var(--teal-700), var(--teal-900)) !important;
+    color: white !important;
+    font-weight: 700 !important;
+    box-shadow: 0 8px 18px rgba(10, 76, 65, 0.12);
+}
+
+.stButton > button:hover {
+    background: linear-gradient(135deg, var(--teal-500), var(--teal-700)) !important;
+    border-color: rgba(6, 122, 76, 0.3) !important;
+}
+
+div[data-testid="stFileUploader"] section {
+    background: rgba(255, 255, 255, 0.82);
+    border: 1px dashed rgba(6, 122, 76, 0.32);
+    border-radius: 14px;
+}
+
+div[data-testid="stAlert"] {
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.75);
+}
+
+.timetable-result-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin: 1.5rem 0 1rem;
+    padding: 0.85rem 1rem;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    background: linear-gradient(135deg, rgba(218, 250, 240, 0.92), rgba(255, 255, 255, 0.9));
+    color: var(--teal-900);
+    box-shadow: var(--shadow);
+}
+
+.timetable-result-header .material-symbols-outlined {
+    display: grid;
+    place-items: center;
+    width: 2.3rem;
+    height: 2.3rem;
+    border-radius: 12px;
+    background: var(--teal-700);
+    color: white;
+}
+
+.timetable-result-header div {
+    display: grid;
+    gap: 0.12rem;
+}
+
+.timetable-result-header small {
+    color: var(--muted);
+    font-size: 0.74rem;
+}
+
+.stMarkdown table {
+    width: 100%;
+    border: 1px solid var(--border);
+    border-collapse: separate;
+    border-spacing: 0;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+}
+
+.stMarkdown th {
+    background: rgba(218, 250, 240, 0.78);
+    color: var(--teal-900);
+    font-weight: 800;
+}
+
+.stMarkdown td,
+.stMarkdown th {
+    padding: 0.65rem 0.75rem;
+    border-bottom: 1px solid rgba(6, 122, 76, 0.1);
+    text-align: left;
+}
+
+.stMarkdown tr:last-child td {
+    border-bottom: 0;
+}
+
+.stCaptionContainer p {
+    color: var(--muted) !important;
+    font-size: 0.9rem !important;
+}
+
+@media (max-width: 700px) {
+    .block-container {
+        padding: 1.2rem 0.8rem 2rem;
+    }
+
+    .ai-header-row {
+        align-items: flex-start;
+    }
+
+    .stMarkdown table {
+        display: block;
+        overflow-x: auto;
+        white-space: nowrap;
+    }
+}

@@ -6,6 +6,8 @@ import pandas as pd
 import streamlit as st
 from pypdf import PdfReader
 
+from auth import auth_gate, render_logout_button, render_page_link
+
 st.set_page_config(
     page_title="ExamPrep AI",
     page_icon=":material/school:",
@@ -26,6 +28,8 @@ if css_path.exists():
     )
 else:
     st.error(f"CSS file not found: {css_path}")
+
+auth_gate()
 
 
 def extract_questions(text):
@@ -103,11 +107,14 @@ with st.sidebar:
         unsafe_allow_html=True,
     )
 
-    st.page_link("dash.py", label="Dashboard", icon=":material/dashboard:")
-    st.page_link("pages/que.py", label="Question Paper Analyzer", icon=":material/document_scanner:")
-    st.page_link("pages/ai.py", label="AI Assistant", icon=":material/psychology:")
-    st.page_link("pages/tda.py", label="Today Achievement", icon=":material/workspace_premium:")
-    st.page_link("pages/his.py", label="History", icon=":material/history:")
+    render_page_link("dash.py", label="Dashboard", icon=":material/dashboard:")
+    render_page_link("pages/que.py", label="Question Paper Analyzer", icon=":material/document_scanner:")
+    render_page_link("pages/ai.py", label="AI Assistant", icon=":material/psychology:")
+    render_page_link("pages/timetable.py", label="Timetable Maker", icon=":material/calendar_month:")
+    render_page_link("pages/tda.py", label="Today Achievement", icon=":material/workspace_premium:")
+    render_page_link("pages/timer.py", label="Study Timer", icon=":material/timer:")
+    render_page_link("pages/his.py", label="History", icon=":material/history:")
+    render_logout_button()
     
 
 st.markdown(

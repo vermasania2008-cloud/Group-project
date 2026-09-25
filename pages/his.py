@@ -2,6 +2,8 @@ import streamlit as st
 import sqlite3
 from pathlib import Path
 
+from auth import auth_gate, render_logout_button, render_page_link
+
 
 # =========================================================
 # DATABASE PATH
@@ -14,6 +16,8 @@ DB_PATH = BASE_DIR / "chat_history.db"
 # =========================================================
 # PAGE TITLE
 # =========================================================
+
+auth_gate()
 
 st.markdown(
     '<div class="section-heading"><span class="material-symbols-outlined">history</span><span>Chat History</span></div>',
@@ -53,7 +57,7 @@ with st.sidebar:
     st.markdown(
         """
         <div class="brand">
-            <span class="material-symbols-outlined brand-icon">school</span>
+            <span class="material-symbols-outlined brand-icon"></span>
             <div class="sidebar-title">EDUSEARCH AI</div>
         </div>
         <div class="sidebar-subtitle">Smart Practice. Better Results.</div>
@@ -61,11 +65,14 @@ with st.sidebar:
         unsafe_allow_html=True,
     )
 
-    st.page_link("dash.py", label="Dashboard", icon=":material/dashboard:")
-    st.page_link("pages/que.py", label="Question Paper Analyzer", icon=":material/document_scanner:")
-    st.page_link("pages/ai.py", label="AI Assistant", icon=":material/psychology:")
-    st.page_link("pages/tda.py", label="Today Achievement", icon=":material/workspace_premium:")
-    st.page_link("pages/his.py", label="History", icon=":material/history:")
+    render_page_link("dash.py", label="Dashboard", icon=":material/dashboard:")
+    render_page_link("pages/que.py", label="Question Paper Analyzer", icon=":material/document_scanner:")
+    render_page_link("pages/ai.py", label="AI Assistant", icon=":material/psychology:")
+    render_page_link("pages/timetable.py", label="Timetable Maker", icon=":material/calendar_month:")
+    render_page_link("pages/tda.py", label="Today Achievement", icon=":material/workspace_premium:")
+    render_page_link("pages/timer.py", label="Study Timer", icon=":material/timer:")
+    render_page_link("pages/his.py", label="History", icon=":material/history:")
+    render_logout_button()
 
 
 
@@ -74,33 +81,32 @@ with st.sidebar:
 # CREATE TABLE IF NOT EXISTS
 # =========================================================
 
+user_id = st.session_state.get("auth_user", {}).get("id", 0)
+
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS chats (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER DEFAULT 0,
     question TEXT NOT NULL,
     answer TEXT NOT NULL,
     date TEXT NOT NULL,
-    time TEXT NOT NULL
+    time TEXT NOT NULL,
+    deleted INTEGER DEFAULT 0
 )
 """)
 
 conn.commit()
 
-
-# =========================================================
-# ADD DELETED COLUMN IF IT DOES NOT EXIST
-# =========================================================
-
 cursor.execute("PRAGMA table_info(chats)")
 
 columns = [column[1] for column in cursor.fetchall()]
 
+if "user_id" not in columns:
+    cursor.execute("ALTER TABLE chats ADD COLUMN user_id INTEGER DEFAULT 0")
+    conn.commit()
+
 if "deleted" not in columns:
-
-    cursor.execute(
-        "ALTER TABLE chats ADD COLUMN deleted INTEGER DEFAULT 0"
-    )
-
+    cursor.execute("ALTER TABLE chats ADD COLUMN deleted INTEGER DEFAULT 0")
     conn.commit()
 
                                           # SESSION STATE
@@ -141,11 +147,12 @@ with history_tab:
             """
             SELECT id, question, answer, date, time
             FROM chats
-            WHERE deleted = 0
+            WHERE user_id = ?
+            AND deleted = 0
             AND question LIKE ?
             ORDER BY id DESC
             """,
-            (f"%{search}%",)
+            (user_id, f"%{search}%")
         )
 
     else:
@@ -154,9 +161,11 @@ with history_tab:
             """
             SELECT id, question, answer, date, time
             FROM chats
-            WHERE deleted = 0
+            WHERE user_id = ?
+            AND deleted = 0
             ORDER BY id DESC
-            """
+            """,
+            (user_id,)
         )
 
 
@@ -228,9 +237,9 @@ with history_tab:
                     """
                     UPDATE chats
                     SET deleted = 1
-                    WHERE id = ?
+                    WHERE id = ? AND user_id = ?
                     """,
-                    (chat_id,)
+                    (chat_id, user_id)
                 )
 
                 conn.commit()
@@ -306,8 +315,9 @@ with history_tab:
                         """
                         UPDATE chats
                         SET deleted = 1
-                        WHERE deleted = 0
-                        """
+                        WHERE user_id = ? AND deleted = 0
+                        """,
+                        (user_id,)
                     )
 
                     conn.commit()
@@ -344,9 +354,10 @@ with deleted_tab:
         """
         SELECT id, question, answer, date, time
         FROM chats
-        WHERE deleted = 1
+        WHERE user_id = ? AND deleted = 1
         ORDER BY id DESC
-        """
+        """,
+        (user_id,)
     )
 
     deleted_chats = cursor.fetchall()
@@ -417,9 +428,9 @@ with deleted_tab:
                     """
                     UPDATE chats
                     SET deleted = 0
-                    WHERE id = ?
+                    WHERE id = ? AND user_id = ?
                     """,
-                    (chat_id,)
+                    (chat_id, user_id)
                 )
 
                 conn.commit()
@@ -441,9 +452,9 @@ with deleted_tab:
                 cursor.execute(
                     """
                     DELETE FROM chats
-                    WHERE id = ?
+                    WHERE id = ? AND user_id = ?
                     """,
-                    (chat_id,)
+                    (chat_id, user_id)
                 )
 
                 conn.commit()
@@ -495,8 +506,9 @@ with deleted_tab:
                     cursor.execute(
                         """
                         DELETE FROM chats
-                        WHERE deleted = 1
-                        """
+                        WHERE user_id = ? AND deleted = 1
+                        """,
+                        (user_id,)
                     )
                     conn.commit()
                     st.session_state.open_chat = None

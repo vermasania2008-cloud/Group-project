@@ -1,10 +1,13 @@
 
-import streamlit as st    
+import streamlit as st
 import sqlite3
 from datetime import datetime
 from google import genai
 import os
 from pathlib import Path
+from uuid import uuid4
+
+from auth import auth_gate, render_logout_button, render_page_link
 
 st.set_page_config(
     page_title="AI Assistant",
@@ -25,6 +28,8 @@ if css_path.exists():
 else:
     st.error(f"CSS file not found: {css_path}")
 
+auth_gate()
+
 
 def load_env_file(path):
     """Load simple KEY=VALUE entries without requiring python-dotenv."""
@@ -38,7 +43,28 @@ def load_env_file(path):
                 continue
 
             key, value = line.split("=", 1)
-            os.environ.setdefault(key.strip(), value.strip().strip("'\""))
+            clean_key = key.strip()
+            clean_value = value.strip().strip("'\"")
+
+            if clean_key.startswith("GEMINI_API_KEY"):
+                if clean_key not in os.environ and clean_value:
+                    os.environ[clean_key] = clean_value
+            elif clean_key not in os.environ:
+                os.environ[clean_key] = clean_value
+
+
+def get_api_keys():
+    keys = []
+    primary = os.getenv("GEMINI_API_KEY", "").strip()
+    if primary:
+        keys.append(primary)
+
+    for index in range(2, 11):
+        backup = os.getenv(f"GEMINI_API_KEY_{index}", "").strip()
+        if backup and backup not in keys:
+            keys.append(backup)
+
+    return keys
 
                                # LOAD ENVIRONMENT VARIABLES
 load_env_file(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"))
@@ -46,7 +72,7 @@ load_env_file(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"))
                                 # DATABASE
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(BASE_DIR, "chat_history.db")
-       
+
 conn = sqlite3.connect(
     DB_PATH,
     check_same_thread=False
@@ -58,41 +84,49 @@ cursor = conn.cursor()
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS chats (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER DEFAULT 0,
     question TEXT NOT NULL,
     answer TEXT NOT NULL,
     date TEXT NOT NULL,
-    time TEXT NOT NULL
+    time TEXT NOT NULL,
+    deleted INTEGER DEFAULT 0
 )
 """)
 
 conn.commit()
 
+cursor.execute("PRAGMA table_info(chats)")
+columns = [column[1] for column in cursor.fetchall()]
+if "user_id" not in columns:
+    cursor.execute("ALTER TABLE chats ADD COLUMN user_id INTEGER DEFAULT 0")
+    conn.commit()
+if "deleted" not in columns:
+    cursor.execute("ALTER TABLE chats ADD COLUMN deleted INTEGER DEFAULT 0")
+    conn.commit()
+
                                   # SESSION STATE
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
+if "recent_chat_id" not in st.session_state:
+    st.session_state.recent_chat_id = None
                                 
                                   # GEMINI API
-API_KEY = os.getenv("GEMINI_API_KEY")
+API_KEYS = get_api_keys()
 
-if not API_KEY:
+if not API_KEYS:
     st.markdown(
         """
         <div class="notice-box error-box">
             <span class="material-symbols-outlined">error</span>
             <div>
                 <strong>Gemini API key not found.</strong>
-                <small>Please add GEMINI_API_KEY to your .env file.</small>
+                <small>Please add GEMINI_API_KEY and optional backup keys such as GEMINI_API_KEY_2 in your .env file.</small>
             </div>
         </div>
         """,
         unsafe_allow_html=True,
     )
     st.stop()
-
-
-client = genai.Client(
-    api_key=API_KEY
-)
 
 st.markdown(
     """
@@ -157,159 +191,90 @@ def handle_prompt(question, uploaded_file=None):
     )
 
 
-                                   # GEMINI SYSTEM INSTRUCTION
-SYSTEM_INSTRUCTION = """
-You are an academic AI assistant for college students.
-
-Your job is to answer the student's question clearly,
-accurately and in simple language.
-
-IMPORTANT RULES FOR UPLOADED FILES:
-
-1. If a file is uploaded, carefully inspect and understand
-   the entire relevant content of the file before answering.
-
-2. Treat the uploaded file as an important source of context.
-
-3. If the student's question asks about the uploaded file,
-   answer using information from that file.
-
-4. Do not ignore the uploaded file.
-
-5. If the answer can be found in the uploaded file,
-   explain the answer based on the file.
-
-6. If the question asks you to summarize, explain, analyze,
-   extract questions, find topics, identify important points,
-   or answer a question from the uploaded file, perform that
-   task using the uploaded file.
-
-7. If the answer is NOT available in the uploaded file,
-   clearly say that the information was not found in the
-   uploaded file. You may then provide general knowledge
-   separately if it is useful.
-
-8. Never pretend that information came from the uploaded file
-   when it did not.
-
-GENERAL RULES:
-
-- Explain concepts clearly.
-- Use simple language suitable for college students.
-- Use headings and bullet points when useful.
-- Give examples when appropriate.
-- For programming questions, provide correct code.
-- For mathematical problems, explain the steps.
-- For technical subjects, use accurate terminology.
-- If you are uncertain, say so instead of making up information.
-- Do not give unnecessarily complicated answers.
-"""
+                                              # COMPACT MODEL INSTRUCTIONS
+SYSTEM_INSTRUCTION = (
+    "You are EduSearch AI, an academic tutor. Explain uploaded documents accurately and in detail, "
+    "using the document as the primary source. Cover the main ideas, definitions, processes, examples, "
+    "important details, and study implications. Do not invent facts; clearly label anything not found "
+    "in the document. Use clear headings, bullets, and step-by-step explanations suitable for a college student."
+)
                                            # GENERATE GEMINI RESPONSE
 def generate_answer(question, uploaded_file=None):
+    last_error = None
 
-    try:
-
-        contents = []
-                                           # FILE HANDLING
-        if uploaded_file is not None:
-
-                                           # Save uploaded file temporarily
-            temp_file_path = os.path.join(
-                BASE_DIR,
-                f"temp_{uploaded_file.name}"
-            )
-
-            with open(temp_file_path, "wb") as f:
-                f.write(uploaded_file.getvalue())
-
-
-            # Upload file to Gemini
-            gemini_file = client.files.upload(
-                file=temp_file_path
-            )
-
-
-            # Add file to Gemini request
-            contents.append(gemini_file)
-                                       
-                              # BUILD USER PROMPT
-            if question:
-
-               if uploaded_file:
-
-                user_prompt = f"""
-The student has uploaded a file named:
-
-{uploaded_file.name}
-
-Carefully inspect the uploaded file first.
-
-Then answer the student's question based on the
-uploaded file whenever the question is related to it.
-
-Student's question:
-
-{question}
-
-Make it clear which information comes from the
-uploaded file when appropriate.
-"""
-
-            else:
-
-                user_prompt = question
-
-        else:
-
-            user_prompt = """
-Please carefully analyze the uploaded file.
-
-Provide a useful explanation of its contents.
-
-Identify the main topics, important concepts,
-and important information that a college student
-should understand.
-"""
-
-
-        contents.append(user_prompt)
-                            # GENERATE RESPONSE
-        response = client.models.generate_content(
-
-            model="gemini-3.6-flash",
-
-            contents=contents,
-
-            config={
-                "system_instruction": SYSTEM_INSTRUCTION
-            }
-        )
-                            # DELETE TEMPORARY FILE
+    for api_key in API_KEYS:
+        temp_file_path = None
         try:
+            client = genai.Client(api_key=api_key)
+            contents = []
 
-            if os.path.exists(temp_file_path):
-                os.remove(temp_file_path)
+            if uploaded_file is not None:
+                temp_file_path = os.path.join(
+                    BASE_DIR,
+                    f".upload_{uuid4().hex}_{Path(uploaded_file.name).name}"
+                )
 
-        except Exception:
-            pass
-                             # RETURN ANSWER
-        if response.text:
+                with open(temp_file_path, "wb") as f:
+                    f.write(uploaded_file.getvalue())
 
-            return response.text
+                gemini_file = client.files.upload(file=temp_file_path)
+                contents.append(gemini_file)
 
-        return "⚠️ Gemini did not return an answer."
+                if question:
+                    user_prompt = (
+                        f"File: {Path(uploaded_file.name).name}\n"
+                        f"Answer this question using the file when relevant:\n{question}"
+                    )
+                else:
+                    user_prompt = (
+                        "Explain this uploaded document in detail for a college student. Cover its structure, "
+                        "main topics, key definitions, important concepts, processes, examples, likely exam points, "
+                        "and a short final recap. Base every document-specific claim on the file."
+                    )
+            else:
+                user_prompt = question or "What are the most important study points?"
 
+            contents.append(user_prompt)
 
-    except Exception as e:
+            response = client.models.generate_content(
+                model="gemini-3.6-flash",
+                contents=contents,
+                config={
+                    "system_instruction": SYSTEM_INSTRUCTION,
+                    "max_output_tokens": 1200,
+                }
+            )
 
-        return f"""
+            if temp_file_path and os.path.exists(temp_file_path):
+                try:
+                    os.remove(temp_file_path)
+                except Exception:
+                    pass
+
+            if response.text:
+                return response.text
+
+            return "⚠️ Gemini did not return an answer."
+
+        except Exception as e:
+            last_error = e
+            if temp_file_path and os.path.exists(temp_file_path):
+                try:
+                    os.remove(temp_file_path)
+                except Exception:
+                    pass
+            continue
+
+    return f"""
 ### ❌ Error
 
 Unable to generate an answer.
 
 **Error:**
-`{str(e)}`
+`{str(last_error) if last_error else 'No valid Gemini API keys were available.'}`
 """
+
+
                               # SAVE CHAT TO SQLITE
 def save_chat(question, answer):
 
@@ -317,15 +282,17 @@ def save_chat(question, answer):
 
     chat_date = now.strftime("%d-%m-%Y")
     chat_time = now.strftime("%I:%M %p")
-
+    current_user = st.session_state.get("auth_user") or {}
+    user_id = current_user.get("id", 0)
 
     cursor.execute(
         """
         INSERT INTO chats
-        (question, answer, date, time)
-        VALUES (?, ?, ?, ?)
+        (user_id, question, answer, date, time, deleted)
+        VALUES (?, ?, ?, ?, ?, 0)
         """,
         (
+            user_id,
             question,
             answer,
             chat_date,
@@ -337,6 +304,65 @@ def save_chat(question, answer):
 
     return chat_date, chat_time
 
+
+def get_recent_chats(limit=None, search_text=""):
+    current_user = st.session_state.get("auth_user") or {}
+    user_id = current_user.get("id", 0)
+    query = """
+        SELECT id, question, answer, date, time
+        FROM chats
+        WHERE user_id = ? AND deleted = 0
+    """
+    params = [user_id]
+
+    if search_text:
+        query += " AND (question LIKE ? OR answer LIKE ?)"
+        pattern = f"%{search_text}%"
+        params.extend([pattern, pattern])
+
+    query += " ORDER BY id DESC"
+
+    if limit is not None:
+        query += " LIMIT ?"
+        params.append(limit)
+
+    cursor.execute(query, tuple(params))
+    return cursor.fetchall()
+
+
+def delete_recent_chat(chat_id):
+    current_user = st.session_state.get("auth_user") or {}
+    user_id = current_user.get("id", 0)
+    cursor.execute(
+        """
+        UPDATE chats
+        SET deleted = 1
+        WHERE id = ? AND user_id = ?
+        """,
+        (chat_id, user_id),
+    )
+    conn.commit()
+    if st.session_state.recent_chat_id == chat_id:
+        st.session_state.recent_chat_id = None
+    st.rerun()
+
+
+def delete_all_recent_chats():
+    current_user = st.session_state.get("auth_user") or {}
+    user_id = current_user.get("id", 0)
+    cursor.execute(
+        """
+        UPDATE chats
+        SET deleted = 1
+        WHERE user_id = ? AND deleted = 0
+        """,
+        (user_id,),
+    )
+    conn.commit()
+    st.session_state.recent_chat_id = None
+    st.rerun()
+
+
 quick_prompts = [
     "Summarize this topic in simple steps",
     "Explain this like I'm a beginner",
@@ -344,65 +370,186 @@ quick_prompts = [
     "Find key concepts and important facts",
 ]
 
-st.markdown(
-    """
-    <div class="ai-tool-panel">
-        <div class="panel-label">Quick prompts</div>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
+chat_tab, recent_tab, history_tab = st.tabs(["Chat", "Recent Chats", "AI History"])
 
-prompt_cols = st.columns(4)
-for idx, label in enumerate(quick_prompts):
-    with prompt_cols[idx]:
-        if st.button(label, key=f"prompt_{idx}", use_container_width=True):
-            handle_prompt(label)
+with chat_tab:
+    st.markdown(
+        """
+        <div class="ai-tool-panel">
+            <div class="panel-label">Quick prompts</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
-                              # DISPLAY CURRENT SESSION CHAT HISTORY
-for chat in st.session_state.chat_history:
+    prompt_cols = st.columns(4)
+    for idx, label in enumerate(quick_prompts):
+        with prompt_cols[idx]:
+            if st.button(label, key=f"prompt_{idx}", use_container_width=True):
+                handle_prompt(label)
 
-    with st.chat_message("user"):
+                                  # DISPLAY CURRENT SESSION CHAT HISTORY
+    for chat in st.session_state.chat_history:
 
-        st.markdown(f"<div class='prompt-bubble'>{chat['question']}</div>", unsafe_allow_html=True)
+        with st.chat_message("user"):
 
-        st.caption(
-            f'{chat["date"]} | {chat["time"]}'
-        )
+            st.markdown(f"<div class='prompt-bubble'>{chat['question']}</div>", unsafe_allow_html=True)
+
+            st.caption(
+                f'{chat["date"]} | {chat["time"]}'
+            )
 
 
-    with st.chat_message("assistant"):
+        with st.chat_message("assistant"):
 
-        st.markdown(f"<div class='assistant-answer'>{chat['answer']}</div>", unsafe_allow_html=True)
+            st.markdown(f"<div class='assistant-answer'>{chat['answer']}</div>", unsafe_allow_html=True)
                                 # CHAT INPUT
-prompt = st.chat_input(
+    prompt = st.chat_input(
 
-    "Ask me anything or upload a file...",
+        "Ask me anything or upload a file...",
 
-    accept_file=True,
+        accept_file=True,
 
-    file_type=[
-        "pdf",
-        "txt",
-        "docx",
-        "csv",
-        "png",
-        "jpg",
-        "jpeg"
-    ],
+        file_type=[
+            "pdf",
+            "txt",
+            "docx",
+            "csv",
+            "png",
+            "jpg",
+            "jpeg"
+        ],
 
-    max_upload_size=200
-)
+        max_upload_size=200
+    )
                                   # PROCESS USER INPUT
-if prompt:
-    question = prompt.text.strip()
-    uploaded_files = prompt.files
+    if prompt:
+        question = prompt.text.strip()
+        uploaded_files = prompt.files
 
-    uploaded_file = None
-    if uploaded_files:
-        uploaded_file = uploaded_files[0]
+        uploaded_file = None
+        if uploaded_files:
+            uploaded_file = uploaded_files[0]
 
-    handle_prompt(question, uploaded_file)
+        handle_prompt(question, uploaded_file)
+
+with recent_tab:
+    st.markdown("### AI Result Grid")
+    st.caption("Your newest AI summary conversations are shown first, with quick search and fast reopen access.")
+
+    search_text = st.text_input(
+        "Search results",
+        placeholder="Search by question or answer...",
+        key="recent_search",
+        help="Filter your saved AI results by topic or keyword.",
+    )
+
+    all_recent_chats = get_recent_chats(search_text=search_text)
+    recent_chats = all_recent_chats[:12]
+
+    metric_col1, metric_col2, metric_col3 = st.columns(3)
+    with metric_col1:
+        st.metric("Saved results", len(all_recent_chats))
+    with metric_col2:
+        latest_label = all_recent_chats[0][3] + " • " + all_recent_chats[0][4] if all_recent_chats else "No results"
+        st.metric("Newest", latest_label)
+    with metric_col3:
+        newest_question = all_recent_chats[0][1] if all_recent_chats else "No recent summary"
+        st.metric("Latest topic", newest_question[:28] + ("..." if len(newest_question) > 28 else ""))
+
+    if not recent_chats:
+        st.info("No AI results match your search yet. Try a different keyword or start a new summary in the Chat tab.")
+    else:
+        grid_cols = st.columns(3)
+
+        for index, (chat_id, question, answer, date, time) in enumerate(recent_chats):
+            with grid_cols[index % 3]:
+                with st.container():
+                    st.markdown(
+                        """
+                        <div class="ai-result-card">
+                            <div class="ai-result-date">{date} · {time}</div>
+                            <div class="ai-result-title">{title}</div>
+                            <div class="ai-result-tag">AI Summary</div>
+                        </div>
+                        """.format(
+                            date=date,
+                            time=time,
+                            title=(question[:80] + "...") if len(question) > 80 else question,
+                        ),
+                        unsafe_allow_html=True,
+                    )
+
+                    action_col1, action_col2 = st.columns([2, 1])
+                    with action_col1:
+                        if st.button(
+                            "Open",
+                            key=f"recent_grid_open_{chat_id}",
+                            use_container_width=True,
+                            icon="📄",
+                        ):
+                            st.session_state.recent_chat_id = chat_id
+                    with action_col2:
+                        if st.button(
+                            "Delete",
+                            key=f"recent_grid_delete_{chat_id}",
+                            use_container_width=True,
+                            icon="🗑️",
+                        ):
+                            delete_recent_chat(chat_id)
+
+                    if st.session_state.recent_chat_id == chat_id:
+                        st.markdown("---")
+                        st.caption(f"{date} | {time}")
+                        st.markdown("**Question**")
+                        st.write(question)
+                        st.markdown("**AI Answer**")
+                        st.markdown(answer)
+
+with history_tab:
+    st.markdown("### AI History")
+    st.caption("Detailed timeline of your AI conversations with full date and time records.")
+
+    history_search = st.text_input(
+        "Search history",
+        placeholder="Search by question or answer...",
+        key="ai_history_search",
+    )
+
+    history_chats = get_recent_chats(search_text=history_search)
+
+    if history_chats:
+        if st.button(
+            "Clear all AI history",
+            key="clear_all_ai_history",
+            type="secondary",
+            use_container_width=False,
+            icon="🧹",
+        ):
+            delete_all_recent_chats()
+
+    if not history_chats:
+        st.info("No AI history found yet. Start a conversation in the Chat tab to build your timeline.")
+    else:
+        st.markdown("---")
+        for chat_id, question, answer, date, time in history_chats:
+            short_title = question[:70] + "..." if len(question) > 70 else question
+            with st.container(border=True):
+                col_head, col_delete = st.columns([7, 1])
+                with col_head:
+                    st.markdown(
+                        f"<div class='ai-history-item'><div class='ai-history-meta'>{date} • {time}</div><div class='ai-history-title'>{short_title}</div></div>",
+                        unsafe_allow_html=True,
+                    )
+                with col_delete:
+                    if st.button("Delete", key=f"history_delete_{chat_id}", use_container_width=True):
+                        delete_recent_chat(chat_id)
+
+                with st.expander("View conversation", expanded=False):
+                    st.markdown("**Question**")
+                    st.write(question)
+                    st.markdown("**AI Answer**")
+                    st.markdown(answer)
 
 with st.sidebar:
     st.markdown(
@@ -418,9 +565,12 @@ with st.sidebar:
         unsafe_allow_html=True,
     )
 
-    st.page_link("dash.py", label="Dashboard", icon=":material/dashboard:")
-    st.page_link("pages/que.py", label="Question Paper Analyzer", icon=":material/document_scanner:")
-    st.page_link("pages/ai.py", label="AI Assistant", icon=":material/psychology:")
-    st.page_link("pages/tda.py", label="Today Achievement", icon=":material/workspace_premium:")
-    st.page_link("pages/his.py", label="History", icon=":material/history:")
+    render_page_link("dash.py", label="Dashboard", icon=":material/dashboard:")
+    render_page_link("pages/que.py", label="Question Paper Analyzer", icon=":material/document_scanner:")
+    render_page_link("pages/ai.py", label="AI Assistant", icon=":material/psychology:")
+    render_page_link("pages/timetable.py", label="Timetable Maker", icon=":material/calendar_month:")
+    render_page_link("pages/tda.py", label="Today Achievement", icon=":material/workspace_premium:")
+    render_page_link("pages/timer.py", label="Study Timer", icon=":material/timer:")
+    render_page_link("pages/his.py", label="History", icon=":material/history:")
+    render_logout_button()
     

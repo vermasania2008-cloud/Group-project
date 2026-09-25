@@ -3,6 +3,8 @@ import pandas as pd
 from pathlib import Path
 from datetime import date
 
+from auth import auth_gate, render_logout_button, render_page_link
+
 st.set_page_config(
     page_title="EduSearch AI - Today's Achievements",
     page_icon=":material/workspace_premium:",
@@ -23,6 +25,8 @@ if css_path.exists():
 else:
     st.error(f"CSS file not found: {css_path}")
 
+auth_gate()
+
 with st.sidebar:
     st.markdown(
         """
@@ -35,11 +39,14 @@ with st.sidebar:
         unsafe_allow_html=True,
     )
 
-    st.page_link("dash.py", label="Dashboard", icon=":material/dashboard:")
-    st.page_link("pages/que.py", label="Question Paper Analyzer", icon=":material/document_scanner:")
-    st.page_link("pages/ai.py", label="AI Assistant", icon=":material/psychology:")
-    st.page_link("pages/tda.py", label="Today Achievement", icon=":material/workspace_premium:")
-    st.page_link("pages/his.py", label="History", icon=":material/history:")
+    render_page_link("dash.py", label="Dashboard", icon=":material/dashboard:")
+    render_page_link("pages/que.py", label="Question Paper Analyzer", icon=":material/document_scanner:")
+    render_page_link("pages/ai.py", label="AI Assistant", icon=":material/psychology:")
+    render_page_link("pages/timetable.py", label="Timetable Maker", icon=":material/calendar_month:")
+    render_page_link("pages/tda.py", label="Today Achievement", icon=":material/workspace_premium:")
+    render_page_link("pages/timer.py", label="Study Timer", icon=":material/timer:")
+    render_page_link("pages/his.py", label="History", icon=":material/history:")
+    render_logout_button()
     
 
 DATA_FILE = Path(__file__).parent / "achievements.csv"
@@ -65,13 +72,22 @@ def save_achievements(data):
 
 
 st.markdown(
-    '<div class="section-heading"><span class="material-symbols-outlined">school</span><span>EduSearch AI</span></div>',
+    """
+    <div class="achievement-hero">
+        <div class="achievement-hero-copy">
+            <div class="achievement-kicker"><span class="material-symbols-outlined">workspace_premium</span> Study rewards</div>
+            <h1>Achievement Tracker</h1>
+            <p>Celebrate your progress, build momentum, and let AI-powered milestones keep you motivated.</p>
+        </div>
+        <div class="achievement-hero-badge">
+            <span class="material-symbols-outlined">bolt</span>
+            <span>Level Up</span>
+        </div>
+    </div>
+    """,
     unsafe_allow_html=True,
 )
-st.markdown(
-    '<div class="section-heading"><span class="material-symbols-outlined">workspace_premium</span><span>Today\'s Achievement Tracker</span></div>',
-    unsafe_allow_html=True,
-)
+
 st.write("Track your daily learning, study, and personal achievements.")
 
 today = str(date.today())
@@ -124,36 +140,78 @@ if submitted:
 
 today_data = data[data["Date"].astype(str) == today]
 
-st.divider()
+completed_count = len(today_data[today_data["Status"] == "Completed"])
+in_progress_count = len(today_data[today_data["Status"] == "In Progress"])
+planned_count = len(today_data[today_data["Status"] == "Planned"])
+
+progress_score = min(100, int((completed_count * 100) / max(1, len(today_data) or 1)))
+
+st.markdown("---")
 st.subheader("Today's Summary")
 
-col1, col2, col3, col4 = st.columns(4)
+summary_cols = st.columns(4)
+with summary_cols[0]:
+    st.metric("Total", len(today_data))
+with summary_cols[1]:
+    st.metric("Completed", completed_count)
+with summary_cols[2]:
+    st.metric("In Progress", in_progress_count)
+with summary_cols[3]:
+    st.metric("Planned", planned_count)
 
-col1.metric("Total", len(today_data))
-col2.metric(
-    "Completed",
-    len(today_data[today_data["Status"] == "Completed"]),
-)
-col3.metric(
-    "In Progress",
-    len(today_data[today_data["Status"] == "In Progress"]),
-)
-col4.metric(
-    "Planned",
-    len(today_data[today_data["Status"] == "Planned"]),
-)
+reward_banner = "✨ Momentum is building! Keep going!" if completed_count > 0 else "🚀 Start your first streak today."
+st.markdown(f"<div class='reward-banner'>{reward_banner}</div>", unsafe_allow_html=True)
 
-st.divider()
+progress_col, insight_col = st.columns([2, 1])
+with progress_col:
+    st.markdown(
+        f"""
+        <div class="progress-card">
+            <div class="progress-head">
+                <span>Daily progress</span>
+                <strong>{progress_score}%</strong>
+            </div>
+            <div class="progress-bar"><div class="progress-fill" style="width: {progress_score}%"></div></div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+with insight_col:
+    ai_note = "Strong performance today." if completed_count >= 2 else "A few small wins can unlock momentum."
+    st.markdown(
+        f"""
+        <div class="insight-card">
+            <div class="insight-title">AI insight</div>
+            <div class="insight-text">{ai_note}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+st.markdown("---")
 st.subheader("Today's Achievements")
 
 if today_data.empty:
-    st.info("No achievements added today.")
+    st.info("No achievements added today. Start small and build your momentum.")
 else:
-    st.dataframe(
-        today_data,
-        use_container_width=True,
-        hide_index=True,
-    )
+    card_cols = st.columns(3)
+    for idx, row in enumerate(today_data.to_dict("records")):
+        with card_cols[idx % 3]:
+            badge = row["Status"]
+            status_class = "status-complete" if badge == "Completed" else "status-progress" if badge == "In Progress" else "status-planned"
+            st.markdown(
+                f"""
+                <div class="achievement-card {status_class}">
+                    <div class="achievement-card-top">
+                        <span class="material-symbols-outlined">workspace_premium</span>
+                        <span class="achievement-badge">{row['Category']}</span>
+                    </div>
+                    <div class="achievement-title">{row['Achievement']}</div>
+                    <div class="achievement-status">{badge}</div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
 
     if st.button(
         "Delete Today's Achievements",
