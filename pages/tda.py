@@ -3,7 +3,7 @@ import pandas as pd
 from pathlib import Path
 from datetime import date
 
-from auth import auth_gate, render_logout_button, render_page_link
+from auth import auth_gate, render_app_sidebar
 
 st.set_page_config(
     page_title="EduSearch AI - Today's Achievements",
@@ -26,28 +26,7 @@ else:
     st.error(f"CSS file not found: {css_path}")
 
 auth_gate()
-
-with st.sidebar:
-    st.markdown(
-        """
-        <div class="brand">
-            <span class="material-symbols-outlined brand-icon">school</span>
-            <div class="sidebar-title">EDUSEARCH AI</div>
-        </div>
-        <div class="sidebar-subtitle">Smart Practice. Better Results.</div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    render_page_link("dash.py", label="Dashboard", icon=":material/dashboard:")
-    render_page_link("pages/que.py", label="Question Paper Analyzer", icon=":material/document_scanner:")
-    render_page_link("pages/ai.py", label="AI Assistant", icon=":material/psychology:")
-    render_page_link("pages/timetable.py", label="Timetable Maker", icon=":material/calendar_month:")
-    render_page_link("pages/tda.py", label="Today Achievement", icon=":material/workspace_premium:")
-    render_page_link("pages/timer.py", label="Study Timer", icon=":material/timer:")
-    render_page_link("pages/his.py", label="History", icon=":material/history:")
-    render_logout_button()
-    
+render_app_sidebar()
 
 DATA_FILE = Path(__file__).parent / "achievements.csv"
 COLUMNS = ["Date", "Achievement", "Category", "Status"]

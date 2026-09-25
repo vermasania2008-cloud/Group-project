@@ -6,7 +6,7 @@ import pandas as pd
 import streamlit as st
 from pypdf import PdfReader
 
-from auth import auth_gate, render_logout_button, render_page_link
+from auth import auth_gate, render_app_sidebar
 
 st.set_page_config(
     page_title="ExamPrep AI",
@@ -30,6 +30,7 @@ else:
     st.error(f"CSS file not found: {css_path}")
 
 auth_gate()
+render_app_sidebar()
 
 
 def extract_questions(text):
@@ -94,28 +95,6 @@ def extract_pdf_text(uploaded_file):
         )
     return extracted_text
 
-
-with st.sidebar:
-    st.markdown(
-        """
-        <div class="brand">
-            <span class="material-symbols-outlined brand-icon"></span>
-            <div class="sidebar-title">EDUSEARCH AI</div>
-        </div>
-        <div class="sidebar-subtitle">Smart Practice. Better Results.</div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    render_page_link("dash.py", label="Dashboard", icon=":material/dashboard:")
-    render_page_link("pages/que.py", label="Question Paper Analyzer", icon=":material/document_scanner:")
-    render_page_link("pages/ai.py", label="AI Assistant", icon=":material/psychology:")
-    render_page_link("pages/timetable.py", label="Timetable Maker", icon=":material/calendar_month:")
-    render_page_link("pages/tda.py", label="Today Achievement", icon=":material/workspace_premium:")
-    render_page_link("pages/timer.py", label="Study Timer", icon=":material/timer:")
-    render_page_link("pages/his.py", label="History", icon=":material/history:")
-    render_logout_button()
-    
 
 st.markdown(
     """
