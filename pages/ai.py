@@ -140,10 +140,10 @@ st.markdown(
             <span class="material-symbols-outlined ai-title-icon">psychology</span>
             <h1>AI Assistant</h1>
         </div>
-        <p class="ai-subtitle">Ask anything. Upload a file when you want answers grounded in your document.</p>
+        <p class="ai-subtitle">Ask anything or upload a PDF to get a smart summary and detailed analysis.</p>
         <div class="ai-status-row">
             <span class="ai-status-pill"><span class="material-symbols-outlined">bolt</span> Fast answers</span>
-            <span class="ai-status-pill"><span class="material-symbols-outlined">upload_file</span> File-aware</span>
+            <span class="ai-status-pill"><span class="material-symbols-outlined">upload_file</span> PDF support</span>
             <span class="ai-status-pill"><span class="material-symbols-outlined">school</span> Academic focus</span>
         </div>
     </div>
@@ -194,10 +194,12 @@ def handle_prompt(question, uploaded_file=None):
 
                                               # COMPACT MODEL INSTRUCTIONS
 SYSTEM_INSTRUCTION = (
-    "You are EduSearch AI, an academic tutor. Explain uploaded documents accurately and in detail, "
-    "using the document as the primary source. Cover the main ideas, definitions, processes, examples, "
-    "important details, and study implications. Do not invent facts; clearly label anything not found "
-    "in the document. Use clear headings, bullets, and step-by-step explanations suitable for a college student."
+    "You are EduSearch AI, an academic tutor. Answer questions clearly and helpfully for college-level students. "
+    "If a file is uploaded, use it as the primary source and explain it accurately in detail. "
+    "Cover the main ideas, definitions, processes, examples, important details, and study implications. "
+    "If no file is provided, answer from general knowledge while staying accurate, practical, and concise. "
+    "Do not invent facts; clearly label anything not found in the document. Use clear headings, bullets, "
+    "and step-by-step explanations suitable for a college student."
 )
                                            # GENERATE GEMINI RESPONSE
 def generate_answer(question, uploaded_file=None):
@@ -383,11 +385,22 @@ with chat_tab:
         unsafe_allow_html=True,
     )
 
+    uploaded_file = st.file_uploader(
+        "Upload a PDF or document for analysis",
+        type=["pdf", "txt", "md", "docx"],
+        accept_multiple_files=False,
+        help="Upload a PDF, text file, markdown, or document for question-answering and summaries.",
+        key="ai_uploaded_file",
+    )
+
+    if uploaded_file is not None:
+        st.success(f"Selected file: {uploaded_file.name}")
+
     prompt_cols = st.columns(4)
     for idx, label in enumerate(quick_prompts):
         with prompt_cols[idx]:
             if st.button(label, key=f"prompt_{idx}", use_container_width=True):
-                handle_prompt(label)
+                handle_prompt(label, uploaded_file)
 
                                   # DISPLAY CURRENT SESSION CHAT HISTORY
     for chat in st.session_state.chat_history:
@@ -405,32 +418,11 @@ with chat_tab:
 
             st.markdown(f"<div class='assistant-answer'>{chat['answer']}</div>", unsafe_allow_html=True)
                                 # CHAT INPUT
-    prompt = st.chat_input(
-
-        "Ask me anything or upload a file...",
-
-        accept_file=True,
-
-        file_type=[
-            "pdf",
-            "txt",
-            "docx",
-            "csv",
-            "png",
-            "jpg",
-            "jpeg"
-        ],
-
-        max_upload_size=200
-    )
+    st.caption("Upload a PDF or document, then ask a question about it, or chat without a file.")
+    prompt = st.chat_input("Ask me anything about your PDF or any topic...")
                                   # PROCESS USER INPUT
     if prompt:
-        question = prompt.text.strip()
-        uploaded_files = prompt.files
-
-        uploaded_file = None
-        if uploaded_files:
-            uploaded_file = uploaded_files[0]
+        question = prompt.strip()
 
         handle_prompt(question, uploaded_file)
 
