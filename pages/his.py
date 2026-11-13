@@ -18,16 +18,18 @@ DB_PATH = BASE_DIR / "chat_history.db"
 # =========================================================
 
 auth_gate()
-render_app_sidebar()
+render_app_sidebar(hide_brand=True)
 
 st.markdown(
-    '<div class="section-heading"><span class="material-symbols-outlined">history</span><span>Chat History</span></div>',
-    unsafe_allow_html=True,
+    '<div class="section-heading">EduSearch AI<span class="material-symbols-outlined">history</span><span>Chat History</span></div>',
+    unsafe_allow_html=True
 )
-
 st.caption(
     "View and manage your previous conversations with the AI Assistant."
+
 )
+
+
 
 
 # =========================================================
