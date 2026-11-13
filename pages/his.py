@@ -1,6 +1,10 @@
+import sys
 import streamlit as st
 import sqlite3
 from pathlib import Path
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 from auth import auth_gate, render_app_sidebar
 
@@ -21,7 +25,7 @@ auth_gate()
 render_app_sidebar(hide_brand=True)
 
 st.markdown(
-    '<div class="section-heading">EduSearch AI<span class="material-symbols-outlined">history</span><span>Chat History</span></div>',
+    '<div class="section-heading"><span class="material-symbols-outlined">History</span><span></span></div>',
     unsafe_allow_html=True
 )
 st.caption(
@@ -319,7 +323,7 @@ with history_tab:
 
                     st.rerun()
 
-                                                    # DELETED HISTORY TAB
+            # DELETED HISTORY TAB
 with deleted_tab:
 
     st.markdown("### Deleted History")
@@ -375,35 +379,28 @@ with deleted_tab:
                     # DELETED CHAT HEADER
         col1, col2, col3 = st.columns([5, 1, 1])
 
-                    # OPEN DELETED CHAT
+        # OPEN DELETED CHAT
         with col1:
-
             if st.button(
                 f"{title}",
                 key=f"deleted_open_{chat_id}",
                 use_container_width=True,
                 icon="💬"
             ):
-
                 if st.session_state.open_chat == chat_id:
-
                     st.session_state.open_chat = None
-
                 else:
-
                     st.session_state.open_chat = chat_id
 
-                    # RESTORE CHAT
-                    with col2:
-
-                     if st.button(
+        # RESTORE CHAT
+        with col2:
+            if st.button(
                 "",
                 key=f"restore_{chat_id}",
                 help="Restore this conversation",
                 icon="↩️",
             ):
-
-                        cursor.execute(
+                cursor.execute(
                     """
                     UPDATE chats
                     SET deleted = 0
@@ -411,23 +408,18 @@ with deleted_tab:
                     """,
                     (chat_id, user_id)
                 )
-
                 conn.commit()
-
                 st.session_state.open_chat = None
-
                 st.rerun()
 
-                    # PERMANENT DELETE
+        # PERMANENT DELETE
         with col3:
-
             if st.button(
                 "",
                 key=f"permanent_{chat_id}",
                 help="Delete permanently",
                 icon="🗑️"
             ):
-
                 cursor.execute(
                     """
                     DELETE FROM chats
@@ -435,16 +427,13 @@ with deleted_tab:
                     """,
                     (chat_id, user_id)
                 )
-
                 conn.commit()
-
                 st.session_state.open_chat = None
-
                 st.rerun()
 
-                    # SHOW DELETED 
+        # SHOW DELETED
         if st.session_state.open_chat == chat_id:
-          with st.container(border=True):
+            with st.container(border=True):
                 st.caption(
                     f"{date}   |   {time}"
                 )
