@@ -1,22 +1,26 @@
-import streamlit as st
-from collections import Counter
-import re
+from io import BytesIO
 from pathlib import Path
+import re
 
-# ---------------------------------------------------
-# PAGE CONFIGURATION
-# ---------------------------------------------------
+import pandas as pd
+import streamlit as st
+from pypdf import PdfReader
+
+from auth import auth_gate, render_app_sidebar
 
 st.set_page_config(
-    page_title="EduSearch AI - Question Paper Analyzer",
-    page_icon="📄",
-    layout="wide"
+    page_title="ExamPrep AI",
+    page_icon=":material/school:",
+    layout="wide",
+    initial_sidebar_state="expanded",
 )
 
-# ---------------------------------------------------
-# SIDEBAR
-# ---------------------------------------------------
-css_path = Path(__file__).parent / "style.css"
+st.markdown(
+    '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,400,0,0" />',
+    unsafe_allow_html=True,
+)
+
+css_path = Path(__file__).resolve().parent.parent / "style.css"
 if css_path.exists():
     st.markdown(
         f"<style>{css_path.read_text(encoding='utf-8')}</style>",
@@ -25,401 +29,249 @@ if css_path.exists():
 else:
     st.error(f"CSS file not found: {css_path}")
 
-with st.sidebar:
-    st.markdown(
-        """
-        <div class="brand">
-            <span class="brand-icon">🏫</span>
-            <div class="sidebar-title">EDUSEARCH AI</div>
-        </div>
-        <div class="sidebar-subtitle">Smart Practice. Better Results.</div>
-        """,
-        unsafe_allow_html=True,
+auth_gate()
+render_app_sidebar()
+
+
+def extract_questions(text):
+    """Split extracted paper text into manageable question blocks for math papers."""
+    text = text.replace("\r\n", "\n").replace("\r", "\n")
+
+    question_start_pattern = re.compile(
+        r"^\s*(?:Q(?:uestion)?\s*)?(?:\d+(?:[A-Za-z])?|[IVXLC]+)(?:\s*(?:[.):-]|\([A-Za-z0-9]+\)|[A-Za-z]\)))",
+        flags=re.IGNORECASE,
     )
 
-    page = st.radio(
-        "Navigate",
-        [
-            "Dashboard",
-            "Question Paper Analyzer",
-            "AI Assistant",
-            "Today's Achievement",
-            "History",
-        ],
-    )
-
-# ---------------------------------------------------
-# QUESTION PAPER ANALYZER PAGE
-# ---------------------------------------------------
-
-if page == "Question Paper Analyzer":
-
-    st.markdown(
-        '<div class="section-heading"><span>📄</span><span>Question Paper Analyzer</span></div>',
-        unsafe_allow_html=True,
-    )
-    st.write(
-        "Upload multiple question papers and find the most important questions"
-    )
-
-    st.divider()
-
-    # ------------------------------------------------
-    # PDF UPLOAD
-    # ------------------------------------------------
-
-    st.subheader("Upload Question Papers")
-
-    uploaded_files = st.file_uploader(
-        "Drag & drop your PDF files here or click Browse Files",
-        type=["pdf"],
-        accept_multiple_files=True
-    )
-
-    if uploaded_files:
-        st.success(f"{len(uploaded_files)} paper(s) uploaded")
-
-        for file in uploaded_files:
-            st.write(f"{file.name}")
-
-    else:
-        st.info("You can upload multiple PDF files at once.")
-
-    # ------------------------------------------------
-    # ANALYZE BUTTON
-    # ------------------------------------------------
-
-    analyze = st.button(
-        "Analyze Papers",
-        use_container_width=True,
-        icon="🔎"
-    )
-
-    # Variables
+    lines = [line.strip() for line in text.split("\n") if line.strip()]
     questions = []
+    current_question = []
 
-    # ------------------------------------------------
-    # PDF ANALYSIS
-    # ------------------------------------------------
-
-    if analyze:
-
-        if not uploaded_files:
-            st.warning("Please upload at least one PDF question paper.")
-
+    for line in lines:
+        if question_start_pattern.match(line):
+            if current_question:
+                question_text = " ".join(current_question)
+                if question_text.strip():
+                    questions.append(re.sub(r"\s+", " ", question_text).strip())
+            current_question = [line]
+        elif current_question:
+            current_question.append(line)
         else:
-
-            with st.spinner("Analyzing question papers..."):
-
-                try:
-                    from pypdf import PdfReader
-
-                    for pdf_file in uploaded_files:
-
-                        reader = PdfReader(pdf_file)
-
-                        full_text = ""
-
-                        for page in reader.pages:
-                            text = page.extract_text()
-
-                            if text:
-                                full_text += text + "\n"
-
-                        # --------------------------------
-                        # Extract numbered and math-style questions
-                        # --------------------------------
-
-                        question_start_pattern = re.compile(
-                            r"^\s*(?:Q(?:uestion)?\s*)?(?:\d+(?:[A-Za-z])?|[IVXLC]+)(?:\s*(?:[.):-]|\([A-Za-z0-9]+\)|[A-Za-z]\)))",
-                            flags=re.IGNORECASE,
-                        )
-
-                        current_question = []
-
-                        for line in full_text.splitlines():
-                            stripped = line.strip()
-                            if not stripped:
-                                continue
-
-                            if question_start_pattern.match(stripped):
-                                if current_question:
-                                    question = " ".join(current_question)
-                                    question = " ".join(question.split())
-                                    if len(question) > 10:
-                                        questions.append(question)
-                                current_question = [stripped]
-                            elif current_question:
-                                current_question.append(stripped)
-                            else:
-                                current_question = [stripped]
-
-                        if current_question:
-                            question = " ".join(current_question)
-                            question = " ".join(question.split())
-                            if len(question) > 10:
-                                questions.append(question)
-
-                except ImportError:
-
-                    st.error(
-                        "pypdf is not installed. Run: pip install pypdf"
-                    )
-
-                except Exception as e:
-
-                    st.error(f"Error while reading PDF: {e}")
-
-            # ------------------------------------------------
-            # QUESTION FREQUENCY
-            # ------------------------------------------------
-
-            if questions:
-
-                # Normalize questions
-                normalized_questions = []
-
-                for question in questions:
-
-                    q = question.lower()
-
-                    # Remove unnecessary spaces
-                    q = re.sub(r"\s+", " ", q)
-
-                    normalized_questions.append(q)
-
-                question_count = Counter(normalized_questions)
-
-                # Sort according to frequency
-                important_questions = question_count.most_common()
-
-                # ------------------------------------------------
-                # STATISTICS
-                # ------------------------------------------------
-
-                total_questions = len(questions)
-
-                repeated_questions = sum(
-                    1 for q, count in question_count.items()
-                    if count > 1
-                )
-
-                important_count = sum(
-                    1 for q, count in question_count.items()
-                    if count >= 2
-                )
-
-                # ------------------------------------------------
-                # METRICS
-                # ------------------------------------------------
-
-                st.subheader("Analysis Results")
-
-                col1, col2, col3, col4 = st.columns(4)
-
-                with col1:
-                    st.metric(
-                        "Papers Uploaded",
-                        len(uploaded_files)
-                    )
-
-                with col2:
-                    st.metric(
-                        "Questions Found",
-                        total_questions
-                    )
-
-                with col3:
-                    st.metric(
-                        "Repeated Questions",
-                        repeated_questions
-                    )
-
-                with col4:
-                    st.metric(
-                        "Important Questions",
-                        important_count
-                    )
-
-                st.divider()
-
-                # ------------------------------------------------
-                # IMPORTANT QUESTIONS + SUMMARY
-                # ------------------------------------------------
-
-                left, right = st.columns([3, 1])
-
-                # --------------------------------------------
-                # MOST IMPORTANT QUESTIONS
-                # --------------------------------------------
-
-                with left:
-
-                    st.subheader("Most Important Questions")
-
-                    st.caption(
-                        "Questions are ranked by frequency across all uploaded papers"
-                    )
-
-                    if important_questions:
-
-                        for index, (question, count) in enumerate(
-                            important_questions[:10],
-                            start=1
-                        ):
-
-                            col_a, col_b, col_c = st.columns(
-                                [0.5, 6, 2]
-                            )
-
-                            with col_a:
-                                st.write(f"**{index}**")
-
-                            with col_b:
-                                st.write(question.capitalize())
-
-                            with col_c:
-
-                                if count >= 3:
-                                    st.error(
-                                        f"Very Important • Asked {count} times"
-                                    )
-
-                                elif count == 2:
-                                    st.warning(
-                                        f"Important • Asked {count} times"
-                                    )
-
-                                else:
-                                    st.info(
-                                        f"Asked {count} time"
-                                    )
-
-                    else:
-                        st.info("No questions found.")
-
-                # --------------------------------------------
-                # ANALYSIS SUMMARY
-                # --------------------------------------------
-
-                with right:
-
-                    st.subheader("Analysis Summary")
-
-                    st.write(
-                        f"**Papers Analyzed:** {len(uploaded_files)}"
-                    )
-
-                    st.write(
-                        f"**Total Questions:** {total_questions}"
-                    )
-
-                    st.write(
-                        f"**Repeated Questions:** {repeated_questions}"
-                    )
-
-                    st.write(
-                        f"**Important Questions:** {important_count}"
-                    )
-
-                    st.write(
-                        "**Subjects Detected:** Not available"
-                    )
-
-                    st.divider()
-
-                    st.subheader("Tips")
-
-                    st.info(
-                        """
-                        Upload at least 3–5 previous year
-                        question papers to get more accurate
-                        and useful results.
-                        """
-                    )
-
-                # ------------------------------------------------
-                # VIEW ALL QUESTIONS
-                # ------------------------------------------------
-
-                st.divider()
-
-                with st.expander("View All Questions"):
-
-                    for i, question in enumerate(questions, 1):
-                        st.write(f"**{i}.** {question}")
-
+            current_question = [line]
+
+    if current_question:
+        question_text = " ".join(current_question)
+        if question_text.strip():
+            questions.append(re.sub(r"\s+", " ", question_text).strip())
+
+    if not questions:
+        return [re.sub(r"\s+", " ", line).strip() for line in lines if line.strip()]
+
+    return questions
+
+
+def extract_pdf_text(uploaded_file):
+    """Extract embedded text while preserving useful errors for the UI."""
+    pdf_reader = PdfReader(BytesIO(uploaded_file.getvalue()))
+
+    if pdf_reader.is_encrypted:
+        try:
+            if not pdf_reader.decrypt(""):
+                raise ValueError("This PDF is password-protected.")
+        except Exception as error:
+            raise ValueError("This PDF is password-protected.") from error
+
+    page_text = []
+    for page in pdf_reader.pages:
+        text = page.extract_text() or ""
+        if not text.strip():
+            text = page.extract_text(extraction_mode="layout") or ""
+        page_text.append(text)
+
+    extracted_text = "\n".join(page_text).strip()
+    if not extracted_text:
+        raise ValueError(
+            "This PDF contains no selectable text. It may be a scanned document "
+            "and needs OCR before analysis."
+        )
+    return extracted_text
+
+
+st.markdown(
+    """
+    <div class="hero-panel analyzer-hero">
+        <div class="hero-copy">
+            <div class="hero-kicker"><span class="material-symbols-outlined">document_scanner</span> SMART PAPER ANALYSIS</div>
+            <h1>Question paper analyser</h1>
+            <p>Upload previous papers and surface the questions worth your attention.</p>
+            <div class="hero-status"><span class="status-dot"></span> PDF intelligence online</div>
+        </div>
+        <div class="hero-art" aria-hidden="true">
+            <span class="material-symbols-outlined hero-art-main">picture_as_pdf</span>
+            <span class="material-symbols-outlined hero-art-small hero-art-one">search</span>
+            <span class="material-symbols-outlined hero-art-small hero-art-two">task_alt</span>
+            <span class="hero-orbit"></span>
+        </div>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
+
+st.markdown(
+    '<div class="section-heading"><span class="material-symbols-outlined">upload_file</span><span>Upload your question papers</span></div>',
+    unsafe_allow_html=True,
+)
+uploaded_files = st.file_uploader(
+    "Upload multiple PDF question papers",
+    type=["pdf"],
+    accept_multiple_files=True,
+)
+st.markdown(
+    '<div class="upload-note"><span class="material-symbols-outlined">verified</span><span>PDF text is extracted locally for fast, private analysis.</span></div>',
+    unsafe_allow_html=True,
+)
+extracted_papers = []
+
+if uploaded_files:
+    unreadable_files = []
+    scanned_files = []
+    for uploaded_file in uploaded_files:
+        try:
+            extracted_text = extract_pdf_text(uploaded_file)
+        except ValueError as error:
+            if "no selectable text" in str(error):
+                scanned_files.append(uploaded_file.name)
             else:
+                unreadable_files.append(f"{uploaded_file.name} ({error})")
+            continue
+        except Exception as error:
+            unreadable_files.append(f"{uploaded_file.name} ({error})")
+            continue
 
-                st.warning(
-                    "No questions could be extracted from the uploaded PDFs."
+        extracted_papers.append((uploaded_file.name, extracted_text))
+
+    st.caption(f"Loaded {len(uploaded_files)} paper(s)")
+    if unreadable_files:
+        st.warning(
+            "Could not read: " + ", ".join(unreadable_files) + "."
+        )
+    if scanned_files:
+        st.warning(
+            "No selectable text found in: "
+            + ", ".join(scanned_files)
+            + ". These scanned PDFs need OCR before analysis."
+        )
+
+if st.button("Analyze paper", type="primary"):
+    if not uploaded_files:
+        st.warning("Upload at least one PDF before analyzing.")
+    else:
+        all_question_rows = []
+        for paper_name, extracted_text in extracted_papers:
+            for question in extract_questions(extracted_text):
+                normalized_question = re.sub(r"\s+", " ", question).strip().lower()
+                all_question_rows.append(
+                    {
+                        "Question": question,
+                        "Paper": paper_name,
+                        "Normalized Question": normalized_question,
+                    }
                 )
 
-# ---------------------------------------------------
-# OTHER PAGES
-# ---------------------------------------------------
+        if not all_question_rows:
+            st.warning("No selectable text was found in the uploaded PDFs.")
+            st.stop()
 
-elif page == "Dashboard":
+        repeated_counts = {}
+        for row in all_question_rows:
+            repeated_counts[row["Normalized Question"]] = repeated_counts.get(row["Normalized Question"], 0) + 1
 
-    st.markdown(
-        '<div class="section-heading"><span>📊</span><span>Dashboard</span></div>',
-        unsafe_allow_html=True,
-    )
+        analysis_rows = []
+        repeated_question_groups = {}
 
-    st.write("Welcome to EduSearch AI!")
+        for row in all_question_rows:
+            normalized_question = row["Normalized Question"]
+            occurrence_count = repeated_counts[normalized_question]
+            is_repeated = occurrence_count > 1
 
-    col1, col2, col3 = st.columns(3)
+            entry = {
+                "Question": row["Question"],
+                "Paper": row["Paper"],
+                "Occurrences": occurrence_count,
+                "Repeated Question": "Yes" if is_repeated else "No",
+            }
+            analysis_rows.append(entry)
 
-    with col1:
-        st.metric("Papers", 0)
+            if is_repeated:
+                if normalized_question not in repeated_question_groups:
+                    repeated_question_groups[normalized_question] = {
+                        "Question": row["Question"],
+                        "Occurrences": occurrence_count,
+                        "Papers": {row["Paper"]},
+                    }
+                else:
+                    repeated_question_groups[normalized_question]["Occurrences"] = occurrence_count
+                    repeated_question_groups[normalized_question]["Papers"].add(row["Paper"])
 
-    with col2:
-        st.metric("Questions", 0)
+        analysis = pd.DataFrame(
+            [
+                {"Question": row["Question"], "Paper": row["Paper"], "Occurrences": row["Occurrences"], "Repeated Question": row["Repeated Question"]}
+                for row in analysis_rows
+            ]
+        )
 
-    with col3:
-        st.metric("Important Questions", 0)
+        repeated_questions_df = pd.DataFrame(
+            [
+                {
+                    "Question": details["Question"],
+                    "Occurrences": details["Occurrences"],
+                    "Papers": ", ".join(sorted(details["Papers"])),
+                }
+                for details in repeated_question_groups.values()
+            ],
+            columns=["Question", "Occurrences", "Papers"],
+        )
 
-
-elif page == "AI Assistant":
-
-    st.markdown(
-        '<div class="section-heading"><span>🤖</span><span>AI Assistant</span></div>',
-        unsafe_allow_html=True,
-    )
-
-    st.write("Ask questions about your academic papers.")
-
-    question = st.text_input(
-        "Enter your question"
-    )
-
-    if st.button("Ask AI"):
-
-        if question:
-            st.info(
-                "AI Assistant functionality can be connected here."
+        if not repeated_questions_df.empty:
+            repeated_questions_df = repeated_questions_df.sort_values(
+                ["Occurrences", "Question"], ascending=[False, True]
             )
-        else:
-            st.warning("Please enter a question.")
 
+        st.session_state["papers_analyzed"] = len(uploaded_files)
+        st.session_state["questions_analyzed"] = len(analysis)
+        st.session_state["topics_detected"] = 0
 
-elif page == "Today's Achievement":
+        total, papers = st.columns(2)
+        total.metric("Total questions", len(analysis))
+        papers.metric("Papers processed", len(uploaded_files))
 
-    st.markdown(
-        '<div class="section-heading"><span>🏆</span><span>Today\'s Achievement</span></div>',
-        unsafe_allow_html=True,
-    )
+        st.markdown(
+            '<div class="section-heading"><span>📊</span><span>Paper breakdown</span></div>',
+            unsafe_allow_html=True,
+        )
 
-    st.success("Keep studying and achieve your goals!")
+        left_col, right_col = st.columns([2.2, 1.2])
+        with left_col:
+            st.dataframe(analysis, width="stretch", hide_index=True)
 
+        with right_col:
+            st.markdown(
+                '<div class="card-heading"><span>🔁</span><span>Repeated questions</span></div>',
+                unsafe_allow_html=True,
+            )
+            if repeated_questions_df.empty:
+                st.info("No repeated questions were found in the uploaded PDFs.")
+            else:
+                st.metric("Repeated question sets", len(repeated_questions_df))
+                st.metric("Repeat occurrences", int(repeated_questions_df["Occurrences"].sum()))
+                st.dataframe(
+                    repeated_questions_df,
+                    width="stretch",
+                    hide_index=True,
+                    use_container_width=True,
+                )
 
-elif page == "History":
-
-    st.markdown(
-        '<div class="section-heading"><span>🕘</span><span>History</span></div>',
-        unsafe_allow_html=True,
-    )
-
-    st.info("Your previous analysis history will appear here.")
-
-
+        st.download_button(
+            "Download analysis CSV",
+            analysis.to_csv(index=False).encode("utf-8"),
+            "question-paper-analysis.csv",
+        )
